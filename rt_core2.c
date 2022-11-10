@@ -9,6 +9,7 @@
     do { perror(msg); exit(EXIT_FAILURE); } while (0)
 #include <string.h>
 #include <elf.h>
+#include <ctype.h>
 
 typedef struct _ring_trace_t
 {
@@ -152,12 +153,12 @@ int main( int argc, char *argv[])
     /* offset for mmap() must be page aligned */
     addr = mmap( NULL, length, PROT_READ, MAP_PRIVATE, fd, 0);
     if ( addr == MAP_FAILED) { perror( "mmap"); exit( 16); }
-/*
-    printf( "mapped @ 0x%p, size = %d\n", addr, length);
-    printf( "sizeof( int)       = %d\n", sizeof( int));
-    printf( "sizeof( long)      = %d\n", sizeof( long));
-    printf( "sizeof( void *)    = %d\n", sizeof( void *));
-    printf( "sizeof( pthread_t) = %d\n", sizeof( pthread_t));
+
+    printf( "mapped @ 0x%p, size = %ld\n", addr, length);
+    printf( "sizeof( int)       = %ld\n", sizeof( int));
+    printf( "sizeof( long)      = %ld\n", sizeof( long));
+    printf( "sizeof( void *)    = %ld\n", sizeof( void *));
+    printf( "sizeof( pthread_t) = %ld\n", sizeof( pthread_t));
     printf( "================================================================\n");
 
     printf( "ELF header check\n");
@@ -170,9 +171,9 @@ int main( int argc, char *argv[])
     printf( "Byte order   = %.2X -> %s endian\n", addr[5], ( le) ? "little" : "BIG");
 
     printf( "================================================================\n");
-*/
-    bit32 = 1;
-    le = 0;
+
+    // bit32 = 1;
+    // le = 0;
     ring_trace_t	*rt = &srt;
     ring_trace_32le_t	*rt32le;
     ring_trace_32be_t	*rt32be;
@@ -188,7 +189,7 @@ int main( int argc, char *argv[])
 	rt32le = ( ring_trace_32le_t *) p;
 	rt64le = ( ring_trace_64le_t *) p;
 	rt32be = ( ring_trace_32be_t *) p;
-	rt64be = ( ring_trace_32be_t *) p;
+	rt64be = ( ring_trace_64be_t *) p;
 
 	if ( !isdigit( rt64le->id[0])) continue;
 
@@ -196,7 +197,7 @@ int main( int argc, char *argv[])
 	memcpy( rt->id, rt64le->id, sizeof( rt->id));
 	memcpy( rt->time, rt64le->time, sizeof( rt->time));
 	rt->type = rt64le->type;
-	sscanf( rt->id, "%X", &id);
+	sscanf( rt->id, "%lX", &id);
 	if ( prev_id + 1 != id && prev_id != 0)
 		printf( "!!!! not in right order, perhaps new RT block !!!!\n");
 
@@ -264,14 +265,24 @@ int main( int argc, char *argv[])
     }
 
     printf( "================================================================\n");
-    printf( "extracetd %d entries\n", entries);
+    printf( "extracetd %ld entries\n", entries);
 
 	return 0;
 }
 
 int print_rt_text( ring_trace_t *rt)
 {
-	printf( "%.16lX - %s - %s\n", rt->thread, rt->time, rt->text);
+    char text[1024];
+    
+    int text_size = rt->size - sizeof( ring_trace_64le_t) - rt->dump_len;
+    // printf( "text size = %d\n", text_size);
+    memcpy( text, rt->text, text_size);
+    for ( char *x = text; text_size; text_size--, x++)
+    {
+        if ( *x == 0x00) *x = 0x20;
+    }
+
+	printf( "%.16lX - %s - %s\n", rt->thread, rt->time, text);
 		
 	return 0;
 }
@@ -283,11 +294,13 @@ int print_rt_dump( ring_trace_t *rt)
     unsigned char *orig_addr = rt->addr;
     unsigned char *p         = rt->dump;
 
+    if ( rt->size < 0 || rt->dump_len < 0) return 0;
+
     // dump text
     printf( "%.16lX - %s - DUMP(%s) (@%p, size=%d(0x%X))\n", rt->thread, rt->time, rt->text, rt->addr, rt->dump_len, rt->dump_len);
 
-	sprintf( s1, "%.16lX - \t\t\t%.8p-%.5X: ", rt->thread, orig_addr, 0);
-	sprintf( s2, "\0");
+	sprintf( s1, "%.16lX - \t\t\t%p-%.5X: ", rt->thread, orig_addr, 0);
+	*s2 = 0;
     s4[1] = '\0';
 
 	for ( i = 0; i < rt->dump_len; i++)
@@ -303,8 +316,8 @@ int print_rt_dump( ring_trace_t *rt)
     	if ( i%16 == 15)
   		{
       	    printf( "%s  >%s<\n", s1, s2);
-	    	sprintf( s1, "%.16lX - \t\t\t%.8p-%.5X: ", rt->thread, orig_addr, i + 1);
-  	  		sprintf( s2, "\0");
+	    	sprintf( s1, "%.16lX - \t\t\t%p-%.5X: ", rt->thread, orig_addr, i + 1);
+  	  		*s2 = 0;
     	}
   	}
 
@@ -326,9 +339,9 @@ int dump( char *text, char *addr, size_t len)
     unsigned char *p         = addr;
 
     // dump text
-    printf( "dumping '%s' ( @%p, size=%d(0x%X))\n", text, addr, len);
+    printf( "dumping '%s' ( @%p, size=%li(0x%X))\n", text, addr, len, (unsigned int) len);
 
-    sprintf( s2, "\0");
+    *s2 = 0;
     s4[1] = '\0';
 
     for ( i = 0; i < len; i++)
@@ -344,8 +357,8 @@ int dump( char *text, char *addr, size_t len)
     	if ( i%16 == 15)
   		{
       	    printf( "%s  >%s<\n", s1, s2);
-      	    sprintf( s1, "%.8p-%.5X: ", orig_addr, i + 1);
-	    sprintf( s2, "\0");
+      	    sprintf( s1, "%p-%.5X: ", orig_addr, i + 1);
+            *s2 = 0;
     	}
   	}
 
