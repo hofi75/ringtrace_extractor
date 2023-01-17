@@ -1,10 +1,13 @@
 
-all: rt_core rt_core2
+all: rt_core rt_core2 rt_core_agent
 install: rt_core
 	install -m 0755 rt_core /usr/local/bin
 
 rt_core: rt_core.c
 	gcc -g -o rt_core rt_core.c
+
+rt_core_agent: rt_core_agent.c
+	gcc -g -o rt_core_agent rt_core_agent.c
 
 rt_core2: rt_core2.c
 	gcc -g -o rt_core2 rt_core2.c
