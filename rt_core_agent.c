@@ -137,7 +137,6 @@ typedef struct _ring_trace_32be
 int print_rt_text( ring_trace_t *);
 int print_rt_dump( ring_trace_t *);
 int dump( char *text, char *addr, size_t len);
-// void dump( unsigned char *p, unsigned char *, int len);
 int swap_byte_order( void *p, size_t size);
 
 
@@ -153,9 +152,9 @@ int main( int argc, char *argv[])
 
     if ( argc < 2)
     {
-    printf( "rt_core - RingTrace extractor\n");
-    printf( "usage:\n\trt_core dumpfile\n");
-    return 16;
+        printf( "RingTrace extractor\n\n");
+        printf( "usage:\n\t%s core\n", argv[0]);
+        return 16;
     }
 
     strcpy( filename, argv[1]);
@@ -338,46 +337,7 @@ int print_rt_dump( ring_trace_t *rt)
 
     return 0;
 }
-/*
-int dump( char *text, char *addr, size_t len)
-{
-    int i;
-    char s1[256], s2[256], s3[256], s4[2];
-    unsigned char *orig_addr = addr;
-    unsigned char *p         = addr;
 
-    // dump text
-    printf( "dumping '%s' ( @%p, size=%ld(0x%lX))\n", text, addr, len, len);
-
-    s2[0] = '\0';
-    s4[1] = '\0';
-
-    for ( i = 0; i < len; i++)
-    {
-        sprintf( s3, "%.2X", *p);
-        strcat( s1, s3);
-        if ( ( i%4  == 3) &&
-               ( i%16 != 15)) strcat( s1, " ");
-        s4[0] = ( isprint( *p)) ? *p : '.';
-        strcat( s2, s4);
-        p ++;
-        orig_addr ++;
-        if ( i%16 == 15)
-          {
-              printf( "%s  >%s<\n", s1, s2);
-              sprintf( s1, "%.8p-%.5X: ", orig_addr, i + 1);
-            s2[0] = '\0';
-        }
-      }
-
-    if ( strlen( s2) != 0)
-    {
-        printf( "%-59.59s  >%s<\n", s1, s2);
-    }
-
-    return 0;
-}
-*/
 int swap_byte_order( void *p, size_t size)
 {
     unsigned char *x = ( unsigned char *) p, w;
